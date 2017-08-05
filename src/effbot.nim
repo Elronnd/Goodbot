@@ -10,7 +10,7 @@ const
 proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     case event.typ
     of EvConnected:
-        nil
+        discard
     of EvDisconnected, EvTimeout:
         raise newException(Exception, "Disconnected.")
     of EvMsg:
