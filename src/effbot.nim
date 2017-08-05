@@ -1,11 +1,46 @@
-import irc, asyncdispatch, strutils, future
+import irc, times, asyncdispatch, strutils, future, net, asyncnet
+
+const
+    server = "wilhelm.freenode.net"
+
+proc sslreconnect2*(irc: AsyncIrc, timeout = 5000) {.async.} =
+    irc.sock.close()
+
+    await irc.reconnect()
+
+    let ctx = newContext(protVersion = protTLSv1, verifyMode = CVerifyNone)
+    wrapConnectedSocket(ctx, irc.sock, handshakeAsClient)
+
+proc sslreconnect*(irc: AsyncIrc, timeout = 5000) {.async.} =
+    ## Reconnects to an IRC server.
+    ##
+    ## ``Timeout`` specifies the time to wait in miliseconds between multiple
+    ## consecutive reconnections.
+    ##
+    ## This should be used when an ``EvDisconnected`` event occurs.
+
+    let secSinceReconnect = epochTime() - irc.lastReconnect
+    if secSinceReconnect < (timeout/1000):
+        await sleepAsync(timeout - int(secSinceReconnect * 1000))
+
+    irc.sock.close()
+    irc.sock = newAsyncSocket()
+
+    let ctx = newContext(protVersion = protTLSv1, verifyMode = CVerifyNone)
+#    wrapConnectedSocket(ctx, irc.sock, handshakeAsClient)
+#    wrapSocket(ctx, irc.sock)
+
+    await irc.connect()
+    wrapConnectedSocket(ctx, irc.sock, handshakeAsClient)
+    irc.lastReconnect = epochTime()
+
 
 proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     case event.typ
     of EvConnected:
         nil
     of EvDisconnected, EvTimeout:
-        await client.reconnect()
+        await client.sslreconnect()
     of EvMsg:
         proc reply(msg: string): Future[void] =
             client.privmsg(event.origin, msg)
@@ -25,10 +60,19 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
             of "!quit":
                 client.close
 
+            of "!reconn":
+                await client.sslreconnect()
+
         echo(event.raw)
 
 proc main() =
-    var client = newAsyncIrc("wilhelm.freenode.net", nick="EFFBot", joinChans = @["#esmtest"], callback = onIrcEvent)
+    var client = newAsyncIrc("wilhelm.freenode.net", nick="EFFBot", joinChans = @["#esmtest"], callback = onIrcEvent, port=6697.Port)
+
+    let ctx = newContext(protVersion = protTLSv1, verifyMode = CVerifyNone)
+    wrapConnectedSocket(ctx, client.sock, handshakeAsClient)
+
     asyncCheck client.run()
 
     runForever()
+
+main()
