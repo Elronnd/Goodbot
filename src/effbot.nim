@@ -2,6 +2,9 @@ import irc, times, asyncdispatch, strutils, future, net, asyncnet
 
 const
     server = "wilhelm.freenode.net"
+    nickname = "EFFBot"
+    realname = "Goodbot 0.0.1 https://github.com/Elronnd/goodbot"
+    channels = @["#esmtest"]
 
 proc sslreconnect2*(irc: AsyncIrc, timeout = 5000) {.async.} =
     irc.sock.close()
@@ -40,7 +43,7 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     of EvConnected:
         nil
     of EvDisconnected, EvTimeout:
-        await client.sslreconnect()
+        await client.sslreconnect
     of EvMsg:
         proc reply(msg: string): Future[void] =
             client.privmsg(event.origin, msg)
@@ -61,12 +64,14 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
                 client.close
 
             of "!reconn":
-                await client.sslreconnect()
+                await client.sslreconnect
 
         echo(event.raw)
 
 proc main() =
-    var client = newAsyncIrc("wilhelm.freenode.net", nick="EFFBot", joinChans = @["#esmtest"], callback = onIrcEvent, port=6697.Port)
+    stdout.write("Enter password (echoed): ")
+
+    var client = newAsyncIrc(server, nick = nickname, joinChans = channels, realname = realname, serverPass = stdin.readLine(), callback = onIrcEvent, port=6697.Port)
 
     let ctx = newContext(protVersion = protTLSv1, verifyMode = CVerifyNone)
     wrapConnectedSocket(ctx, client.sock, handshakeAsClient)
