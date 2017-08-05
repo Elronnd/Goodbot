@@ -8,4 +8,4 @@ bin = @["effbot"]
 
 
 # Deps
-requires "nim >= 0.17.0"
+requires "nim >= 0.17.0", "irc#head"

@@ -1,3 +1,9 @@
 effbot
 src/effbot
 src/nimcache
+
+.*.swp
+.*.swo
+.*.swn
+.*.swm
+.*.swl
