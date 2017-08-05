@@ -27,8 +27,8 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
 
         echo(event.raw)
 
-var client = newAsyncIrc("wilhelm.freenode.net", nick="EFFBot",
-                 joinChans = @["#esmtest"], callback = onIrcEvent)
-asyncCheck client.run()
+proc main() =
+    var client = newAsyncIrc("wilhelm.freenode.net", nick="EFFBot", joinChans = @["#esmtest"], callback = onIrcEvent)
+    asyncCheck client.run()
 
-runForever()
+    runForever()
