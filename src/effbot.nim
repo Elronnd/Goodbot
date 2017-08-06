@@ -41,12 +41,10 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
         echo event.raw
 
 proc checkxlog(fn: string) {.async.} =
-    var
-        fp: AsyncFile
-        line: string
+    var line: string
     const waittime = 0.1
 
-    fp = openAsync(fn, fmRead)
+    let fp = openAsync(fn, fmRead)
     fp.setFilePos(fp.getFileSize)
 
     while not done:
