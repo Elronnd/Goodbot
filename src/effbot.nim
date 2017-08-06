@@ -1,4 +1,4 @@
-import irc, times, asyncdispatch, strutils, future, net, asyncnet
+import irc, asyncdispatch, asyncfile, asyncnet, strutils, future, net
 
 const
     server = "wilhelm.freenode.net"
@@ -6,12 +6,16 @@ const
     realname = "Goodbot 0.0.1 https://github.com/Elronnd/goodbot"
     channels = @["#esmtest"]
 
+var done = false
+
 
 proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     case event.typ
     of EvConnected:
         discard
     of EvDisconnected, EvTimeout:
+        done = true
+        discard sleepAsync(1000)
         raise newException(Exception, "Disconnected.")
     of EvMsg:
         proc reply(msg: string): Future[void] =
@@ -30,22 +34,45 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
                     client.getUserList(event.origin).join(", "))
 
             of "!quit":
+                done = true
+                discard sleepAsync(1000)
                 client.close
 
         echo event.raw
 
+proc checkxlog(fn: string) {.async.} =
+    var
+        fp: AsyncFile
+        line: string
+    const waittime = 0.1
 
+    fp = openAsync(fn, fmRead)
+    fp.setFilePos(fp.getFileSize)
+
+    while not done:
+        await sleepAsync(int(waittime * 1000))
+
+        line = await fp.readLine
+
+        if line.len > 0:
+            echo line
+
+    fp.close
 
 proc main() =
     stdout.write("Enter password (echoed): ")
 
-    var client = newAsyncIrc(server, nick = nickname, joinChans = channels, realname = realname, serverPass = stdin.readLine(), callback = onIrcEvent, port=6697.Port)
+    let client = newAsyncIrc(server, nick = nickname, joinChans = channels, realname = realname, serverPass = stdin.readLine, callback = onIrcEvent, port=6697.Port)
 
     let ctx = newContext(protVersion = protTLSv1, verifyMode = CVerifyNone)
     wrapConnectedSocket(ctx, client.sock, handshakeAsClient)
 
     asyncCheck client.run()
+    asyncCheck checkxlog("foo.txt")
 
-    runForever()
+    # this is essentially what runForever() does but it does while true.
+    while not done:
+        poll()
+
 
 main()
