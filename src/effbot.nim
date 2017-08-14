@@ -1,4 +1,4 @@
-import irc, asyncdispatch, asyncfile, asyncnet, strutils, future, net
+import irc, times, asyncdispatch, asyncfile, asyncnet, strutils, future, net, tables
 import logging
 
 const
@@ -7,8 +7,16 @@ const
     realname = "Goodbot 0.0.1 https://github.com/Elronnd/goodbot"
     channels = @["#esmtest"]
 
-var done = false
 
+type
+    Message = object
+        fromnick: string
+        msg: string
+        time: Time
+
+var
+    done = false
+    telldb = initTable[string, seq[Message]]()
 
 proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     case event.typ
@@ -23,9 +31,10 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
             client.privmsg(event.origin, msg)
 
         if event.cmd == MPrivMsg:
-            var msg = event.params[event.params.high]
+            let msg = event.params[event.params.high]
+            let command = msg.split[0]
 
-            case msg:
+            case command:
             of "!ping": await reply("pong!")
 
             of "!lag": await reply(if client.getLag != -1.0: $int(client.getLag * 1000.0) & "ms" else: "Unknown lag")
@@ -38,6 +47,33 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
                 done = true
                 discard sleepAsync(1000)
                 client.close
+
+            of "!tell":
+                if msg.split.len == 1:
+                    await reply("Tell whom?")
+                    return
+                elif msg.split.len == 2:
+                    await reply("Tell $# what?" % msg.split[1])
+                    return
+                elif msg.split[1] == event.nick:
+                    await reply("$#: tell yourself!" % event.nick)
+                    return
+
+                var tmp: Message
+                let tonick = msg.split[1]
+
+                tmp.fromnick = event.nick
+                tmp.time = getTime()
+                tmp.msg = join(msg.split(" ")[2..^1], " ")
+
+                if tonick in telldb:
+                    telldb[tonick] &= tmp
+                else:
+                    telldb.add(tonick, @[tmp])
+
+                await reply("I'll get that, $#" % event.nick)
+
+                echo telldb
 
         echo event.raw
 
