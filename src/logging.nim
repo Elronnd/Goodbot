@@ -1,9 +1,11 @@
 import times, strutils, tables, strutils
 
-let nhlog = "version=3.6.0	points=71	deathdnum=0	deathlev=1	maxlvl=1	hp=0	maxhp=12	deaths=1	deathdate=20160305	birthdate=20160302	uid=1003	role=Wiz	race=Hum	gender=Mal	align=Cha	name=Bluescreen	death=killed by a grid bug	conduct=0xfbf	turns=23	achieve=0x0	realtime=69	starttime=1456931741	endtime=1457196535	gender0=Mal	align0=Cha	flags=0x4"
+let nhxlog = "version=3.6.0	points=71	deathdnum=0	deathlev=1	maxlvl=1	hp=0	maxhp=12	deaths=1	deathdate=20160305	birthdate=20160302	uid=1003	role=Wiz	race=Hum	gender=Mal	align=Cha	name=Bluescreen	death=killed by a grid bug	conduct=0xfbf	turns=23	achieve=0x0	realtime=69	starttime=1456931741	endtime=1457196535	gender0=Mal	align0=Cha	flags=0x4"
 
-let slexlog = "version=slex-2.0.0	points=0	deathdnum=0	deathlev=1	maxlvl=1	hp=6	maxhp=6	deaths=0	deathdate=20170810	birthdate=20170806	uid=1003	role=Psi	race=Unm	gender=Fem	align=Neu	hybrid=MazSok	name=dolores	death=escaped	conduct=0x1fff	turns=1	achieve=0x0	realtime=13	starttime=1502027770	endtime=1502346505	gender0=Fem	align0=Neu	modes=normal"
-#let slexlog = "version=slex-1.9.3	points=766570	deathdnum=8	deathlev=10	maxlvl=13	hp=178	maxhp=178	deaths=1	deathdate=20170526	birthdate=20170520	uid=1003	role=Mah	race=Hax	gender=Mal	align=Law	hybrid=none	name=BSOD2	death=quit	conduct=0x900	turns=27281	achieve=0x28200	realtime=100385	starttime=1495240241	endtime=1495801330	gender0=Mal	align0=Law	modes=normal"
+let slexxxlog = "version=slex-2.0.0	points=0	deathdnum=0	deathlev=1	maxlvl=1	hp=6	maxhp=6	deaths=0	deathdate=20170810	birthdate=20170806	uid=1003	role=Psi	race=Unm	gender=Fem	align=Neu	hybrid=MazSok	name=dolores	death=escaped	conduct=0x1fff	turns=1	achieve=0x0	realtime=13	starttime=1502027770	endtime=1502346505	gender0=Fem	align0=Neu	modes=normal"
+
+let nhlog = "3.6.0 71 0 1 1 0 12 1 20160305 20160302 1003 Wiz Hum Mal Cha Bluescreen,killed by a grid bug"
+let slashemlog = "0.0.8 0 0 1 1 16 16 0 20160425 20160425 1003 Kni Hum Fem Law Elronnd,quit Conduct=0"
 
 
 
@@ -30,11 +32,32 @@ type
 
         wizmode*, discover*, bones*: bool
 
+
+    Log = object
+        version*: string
+        points*: int
+
+        deathdnum*, deathlev*, maxlvl*: int
+
+        hp*, maxhp*: int
+        deaths*: int
+
+        starttime*, endtime*: Time
+
+        uid*: int        
+
+        role*, race*, gender*, align*, name*, reason*: string
+
+        conduct*: int
+
+   
+
 proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
     const equals = "="
     var
         tab = initTable[string, string]()
         xlog: Xlog
+
     let list = str.split(delim)
 
     for itemp in list:
@@ -67,12 +90,58 @@ proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
     xlog.gender0 = tab["gender0"]
     xlog.align0 = tab["align0"]
 
-    if "hybrid" in tab and tab["hybrid"] != "none":
+    if isslex and tab["hybrid"] != "none":
         xlog.hybrid = tab["hybrid"]
 
     #wizmode, discover, bones: bool
 
     return xlog
 
+proc genlog(str: string, isslashem: bool = false, delim: string = " "): Log =
+    var log: Log
 
-echo genxlog(nhlog)
+    let list = str.split(delim)
+
+    log.version = list[0]
+    log.points = parseInt(list[1])
+
+    log.deathdnum = parseInt(list[2])
+    log.deathlev = parseInt(list[3])
+    log.maxlvl = parseInt(list[4])
+
+    log.hp = parseInt(list[5])
+    log.maxhp = parseInt(list[6])
+    log.deaths = parseInt(list[7])
+
+    log.starttime = toTime(parse(list[8], "yyyyMMdd"))
+    log.endtime = toTime(parse(list[9], "yyyyMMdd"))
+
+    log.uid = parseInt(list[10])
+
+    log.role = list[11]
+    log.race = list[12]
+    log.gender = list[13]
+    log.align = list[14]
+
+    let namereason = list[15].split(',')
+
+    log.name = namereason[0]
+
+    # Can't go over into conduct
+    if isslashem:
+        log.reason = namereason[1] & " " & list[16..^2].join(" ")
+    else:
+        log.reason = namereason[1] & " " & list[16..^1].join(" ")
+
+    # or a variant
+    if isslashem:
+        log.conduct = parseInt(list[high(list)].split('=')[1])
+
+    return log
+    
+        
+     
+
+echo genxlog(nhxlog)
+echo genlog(slashemlog, true)
+echo genlog(nhlog)
