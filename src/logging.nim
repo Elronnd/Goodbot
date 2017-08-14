@@ -44,13 +44,13 @@ type
 
         starttime*, endtime*: Time
 
-        uid*: int        
+        uid*: int
 
         role*, race*, gender*, align*, name*, reason*: string
 
         conduct*: int
 
-   
+
 
 proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
     const equals = "="
@@ -86,7 +86,7 @@ proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
     xlog.achieve = parseHexInt(tab["achieve"])
 
     xlog.realtime = parseInt(tab["realtime"])
-    
+
     xlog.gender0 = tab["gender0"]
     xlog.align0 = tab["align0"]
 
@@ -138,9 +138,9 @@ proc genlog(str: string, isslashem: bool = false, delim: string = " "): Log =
         log.conduct = parseInt(list[high(list)].split('=')[1])
 
     return log
-    
-        
-     
+
+
+
 
 echo genxlog(nhxlog)
 echo genlog(slashemlog, true)
