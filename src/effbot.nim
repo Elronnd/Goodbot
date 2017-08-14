@@ -6,6 +6,7 @@ const
     nickname = "EFFBot"
     realname = "Goodbot 0.0.1 https://github.com/Elronnd/goodbot"
     channels = @["#esmtest"]
+    commands = ["ping", "quit", "lag", "tell", "messages"]
 
 
 type
@@ -17,6 +18,47 @@ type
 var
     done = false
     telldb = initTable[string, seq[Message]]()
+
+    # If someone has more than one message, don't spam the channel with all the
+    # messages, just let them know that they can view the messages with !tell.
+    # But only tell them that once.  So once a message is left for them, set
+    # readdb[nick] true, tell them they have messages if readdb[nick] is true;
+    # then set readdb[nick] = false.  Delete readdb[nick] when we actually spit
+    # out the messages
+    readdb = initTable[string, bool]()
+
+proc handlemsgs(client: AsyncIrc, event: IrcEvent, nick: string, explicitmsg: bool = false) {.async.} =
+    proc reply(msg: string): Future[void] =
+            client.privmsg(event.origin, msg)
+
+    let nic = nick.toLower
+
+
+    if telldb[nic].len == 1:
+        await reply("$#: you have one new message from $#, who said $#" % [nick, telldb[nic][0].fromnick, telldb[nic][0].msg])
+        telldb.del(nic)
+        readdb.del(nic)
+
+    else:
+        if explicitmsg:
+            await reply("$#: you have $# new messages, most recent from $#." % [nick, $int(telldb[nic].len), telldb[nic][^1].fromnick])
+
+            for msg in telldb[nic]:
+                # \x02 is bold
+                await reply("\x02$#\x02 said $#" % [msg.fromnick, msg.msg])
+
+            telldb.del(nic)
+            readdb.del(nic)
+
+        elif readdb[nic]:
+            readdb[nic] = false
+            await reply("$#: you have $# new messages, most recent from $#.  Type !messages to view them." % [nick, $int(telldb[nic].len), telldb[nic][^1].fromnick])
+
+
+        else:
+            discard
+
+
 
 proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
     case event.typ
@@ -30,8 +72,17 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
         proc reply(msg: string): Future[void] =
             client.privmsg(event.origin, msg)
 
+        let
+            # Used to send messages
+            nick = event.nick
+            # Used as a key in tables
+            nic = event.nick.toLower
+
+        if (nic in telldb) and (event.cmd in [MPrivMsg, MJoin, MMode, MTopic, MKick]) and not (event.cmd == MPrivMsg and event.params[^1].split()[0].toLower == "!messages"):
+            await handlemsgs(client, event, nick)
+
         if event.cmd == MPrivMsg:
-            let msg = event.params[event.params.high]
+            let msg = event.params[^1]
             let command = msg.split[0]
 
             case command:
@@ -39,14 +90,16 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
 
             of "!lag": await reply(if client.getLag != -1.0: $int(client.getLag * 1000.0) & "ms" else: "Unknown lag")
 
-            of "!users":
-                await client.privmsg(event.origin, "Users: " &
-                    client.getUserList(event.origin).join(", "))
-
             of "!quit":
                 done = true
                 discard sleepAsync(1000)
                 client.close
+
+            of "!messages":
+                if nic in telldb:
+                    await handlemsgs(client, event, nick, explicitmsg=true)
+                else:
+                    await reply("$#: you have no new messages" % nick)
 
             of "!tell":
                 if msg.split.len == 1:
@@ -69,7 +122,9 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
                 if tonick in telldb:
                     telldb[tonick] &= tmp
                 else:
-                    telldb.add(tonick, @[tmp])
+                    telldb.add(tonick.toLower, @[tmp])
+
+                readdb.add(tonick.toLower, true)
 
                 await reply("I'll get that, $#" % event.nick)
 
