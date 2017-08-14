@@ -10,7 +10,7 @@ let slashemlog = "0.0.8 0 0 1 1 16 16 0 20160425 20160425 1003 Kni Hum Fem Law E
 
 
 type
-    Xlog = object
+    Xlog* = object
         version*: string
         points*: int
         deathdnum*: int
@@ -23,7 +23,7 @@ type
         uid*: int
         role*, race*, gender*, align*, hybrid*: string
         name*: string
-        death*: string
+        reason*: string
         conduct*, turns*, achieve*: int
 
         realtime*: int
@@ -33,7 +33,7 @@ type
         wizmode*, discover*, bones*: bool
 
 
-    Log = object
+    Log* = object
         version*: string
         points*: int
 
@@ -80,7 +80,7 @@ proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
     xlog.gender = tab["gender"]
     xlog.align = tab["align"]
     xlog.name = tab["name"]
-    xlog.death = tab["death"]
+    xlog.reason = tab["death"]
     xlog.conduct = parseHexInt(tab["conduct"])
     xlog.turns = parseInt(tab["turns"])
     xlog.achieve = parseHexInt(tab["achieve"])

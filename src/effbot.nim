@@ -1,4 +1,5 @@
 import irc, asyncdispatch, asyncfile, asyncnet, strutils, future, net
+import logging
 
 const
     server = "wilhelm.freenode.net"
@@ -40,8 +41,12 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
 
         echo event.raw
 
-proc checkxlog(fn: string) {.async.} =
-    var line: string
+proc checkxlog(fn, abbrev: string, client: AsyncIrc, chans: seq[string], isxlog: bool = true, isslashem: bool = false) {.async.} =
+    var
+        line, formattedline: string
+        log: Log
+        xlog: Xlog
+
     const waittime = 0.1
 
     let fp = openAsync(fn, fmRead)
@@ -53,7 +58,21 @@ proc checkxlog(fn: string) {.async.} =
         line = await fp.readLine
 
         if line.len > 0:
+            if isxlog:
+                xlog = genxlog(line, isslashem)
+
+                formattedline = "[$#] $# ($# $# $# $#$#), $# points, T:$#, $#" % [abbrev, xlog.name, xlog.role, xlog.race, xlog.gender, xlog.align, if xlog.hybrid != nil: " " & xlog.hybrid else: "", $xlog.points, $xlog.turns, xlog.reason]
+
+            else:
+                log = genlog(line, isslashem)
+
+                formattedline = "[$#] $# ($# $# $# $#), $# points, $#" % [abbrev, log.name, log.role, log.race, log.gender, log.align, $log.points, log.reason]
+
+            for chan in chans:
+                await client.privmsg(chan, formattedline)
+
             echo line
+            echo formattedline
 
     fp.close
 
@@ -66,7 +85,10 @@ proc main() =
     wrapConnectedSocket(ctx, client.sock, handshakeAsClient)
 
     asyncCheck client.run()
-    asyncCheck checkxlog("foo.txt")
+#fn, abbrev: string, client: AsyncIrc, chans: seq[string], isxlog: bool = true, isslashem: bool = false
+    asyncCheck checkxlog("slexlog", abbrev="slex", client, @["#esmtest"], isslashem = true)
+    asyncCheck checkxlog("nhlog", abbrev="nh", client, @["#esmtest"])
+    asyncCheck checkxlog("log", abbrev="s007", client, @["#esmtest"], isxlog = false, isslashem = true)
 
     # this is essentially what runForever() does but it does while true.
     while not done:
