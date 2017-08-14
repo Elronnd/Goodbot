@@ -97,7 +97,7 @@ proc genxlog*(str: string, isslex: bool = false, delim: string = "\t"): Xlog =
 
     return xlog
 
-proc genlog(str: string, isslashem: bool = false, delim: string = " "): Log =
+proc genlog*(str: string, isslashem: bool = false, delim: string = " "): Log =
     var log: Log
 
     let list = str.split(delim)
@@ -142,6 +142,6 @@ proc genlog(str: string, isslashem: bool = false, delim: string = " "): Log =
 
 
 
-echo genxlog(nhxlog)
-echo genlog(slashemlog, true)
-echo genlog(nhlog)
+#echo genxlog(nhxlog)
+#echo genlog(slashemlog, true)
+#echo genlog(nhlog)
