@@ -4,7 +4,7 @@ author        = "Elijah Stone"
 description   = "An IRC bot that isn\'t shit"
 license       = "BSD 3-clause"
 srcDir = "src"
-bin = @["effbot"]
+bin = @["goodbot"]
 
 
 # Deps
