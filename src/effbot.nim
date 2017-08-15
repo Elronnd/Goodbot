@@ -132,6 +132,20 @@ proc onIrcEvent(client: AsyncIrc, event: IrcEvent) {.async.} =
 
         echo event.raw
 
+
+proc startscummed(log: Log): bool =
+    if log.points < 10:
+        true
+    else:
+        false
+
+proc startscummed(log: XLog): bool =
+    if log.points < 10 or log.turns < 10:
+        true
+    else:
+        false
+
+
 proc checkxlog(fn, abbrev: string, client: AsyncIrc, chans: seq[string], isxlog: bool = true, isslashem: bool = false) {.async.} =
     var
         line, formattedline: string
@@ -152,10 +166,14 @@ proc checkxlog(fn, abbrev: string, client: AsyncIrc, chans: seq[string], isxlog:
             if isxlog:
                 xlog = genxlog(line, isslashem)
 
+                if xlog.startscummed: continue
+
                 formattedline = "[$#] $# ($# $# $# $#$#), $# points, T:$#, $#" % [abbrev, xlog.name, xlog.role, xlog.race, xlog.gender, xlog.align, if xlog.hybrid != nil: " " & xlog.hybrid else: "", $xlog.points, $xlog.turns, xlog.reason]
 
             else:
                 log = genlog(line, isslashem)
+
+                if log.startscummed: continue
 
                 formattedline = "[$#] $# ($# $# $# $#), $# points, $#" % [abbrev, log.name, log.role, log.race, log.gender, log.align, $log.points, log.reason]
 
